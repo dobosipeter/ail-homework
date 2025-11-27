@@ -20,12 +20,15 @@ My idea is to implement a __Video Content Analysis__ solution.
   
 ### Motivation  
 As part of my course, I often review recorded lesson of various classes. However they often don't utilize the built in transcription features, which I've found to be surprisingly useful, when attempting to quickly skim through a lesson in order to find information on a specific topic.  
+  
 Additionally, the efficency of information retrieval, learning could potentially be increased by utilizing a Large Language Model at the end of this pipeline to help with answering questions about the topic.  
+  
 The outline of my solution is described as follows:  
   
-1. Take a video file as input, transcribe it utilizing a model, resulting in a timestamped transcript.
-2. Take the transcript, chunk/segment it into 'logical chapters' based on the topic changes in the content.
-3. Summarize, keyword extract the chapters.
-4. Embed the summaries, keywords, store in a local VectorDB. (e.g.:FAISS)
-5. Get a query from the user, embed it, retrieve relevant chapters from the DB (possibly with timestamps?).
-6. Answer the user's query using the provided context.
+1. Take a video file as input, transcribe it utilizing a model, resulting in a timestamped transcript. (Video -> Text)  
+1.5 Translate any non-English parts into English. (Text -> Text)
+2. Take the transcript, chunk/segment it into 'logical chapters' based on the topic changes in the content. (Text -> Segments)  
+3. Summarize, keyword extract the chapters. (Segments -> Summaries)  
+4. Embed the summaries, keywords, store in a local VectorDB. (_e.g.:FAISS_) (Summaries -> Embeddings)  
+5. Get a query from the user (_translate if not in English_), embed it, retrieve relevant chapters from the DB (_possibly with timestamps?_). (User Query -> Embeddings -> Relevant Context)  
+6. Answer the user's query using the provided context with an LLM. (_Translate back if the user's question was not in English?, Include the context used to answer the query._) (Question -> Relevant Context -> Answer)  
