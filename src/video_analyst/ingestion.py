@@ -1,6 +1,7 @@
 """ This module is responsible for processing the incoming video files. """
 import os
 import math
+import json
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +9,8 @@ import streamlit as st
 from openai import OpenAI
 from pydub import AudioSegment
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+TRANSCRIPT_DIR = Path("data/transcripts")
+TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
 
 def extract_audio(video_path: str, output_dir: str = "data/audio") -> str:
     """
@@ -119,6 +121,20 @@ def transcribe_audio_pipeline(video_path: str) -> list[dict[str, Any]]:
                 - "end" (float): End time in seconds (relative to the video start).
     """
 
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not found in environment variables.")
+
+    client = OpenAI(api_key=api_key)
+
+    video_stem = Path(video_path).stem
+    cache_path = TRANSCRIPT_DIR / f"{video_stem}.json"
+
+    if cache_path.exists():
+        print(f"Cache hit! Loading transcript from {cache_path}")
+        with open(cache_path, "r") as f:
+            return json.load(f)
+
     with st.spinner("Step 1/3: Extracting audio from video..."):
         audio_path = extract_audio(video_path)
 
@@ -175,6 +191,10 @@ def transcribe_audio_pipeline(video_path: str) -> list[dict[str, Any]]:
             global_time_offset += chunk_duration_sec
 
             progress_bar.progress((i + 1) / len(chunk_paths), text=progress_text)
+
+        print(f"Saving transcript to {cache_path}")
+        with open(cache_path, "w") as f:
+            json.dump(full_transcript, f, indent=2)
 
     finally:
         for p in chunk_paths:
