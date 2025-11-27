@@ -1,0 +1,38 @@
+[project]
+name = "video-analyst"
+version = "0.0.1"
+description = "A multi-modal RAG pipeline for video content analysis."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openai",
+    "pydub",
+    "google-cloud-speech",
+    "langchain",
+    "langchain-openai",
+    "langchain-community",
+    "faiss-cpu",
+    "tiktoken",
+    "streamlit==1.50.0",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Tool Configurations
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
