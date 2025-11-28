@@ -1,4 +1,5 @@
 """ This module is the main entry-point of the solution, providing the streamlit app to be used. """
+
 import os
 from pathlib import Path
 import streamlit as st
@@ -8,11 +9,11 @@ load_dotenv()
 
 from video_analyst.ingestion import transcribe_audio_pipeline
 from video_analyst.segmentation import semantic_segmentation_pipeline
+from video_analyst.rag import build_vector_store, query_knowledge_base, list_collections
 
 PAGE_TITLE = "AI Video Analyst"
 PAGE_ICON = "🎥"
 
-# Setup local storage directories
 DATA_DIR = Path("data")
 VIDEO_DIR = DATA_DIR / "videos"
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,7 +24,8 @@ def main():
     """ Main entry-point of the solution """
     st.title(f"{PAGE_ICON} {PAGE_TITLE}")
     st.markdown("""
-    **System Status:** Ready to ingest video, split audio, and extract precise timestamps.
+    **System Status:** Ready.  
+    Ingest videos, build course collections, and ask questions.
     """)
 
     with st.sidebar:
@@ -32,32 +34,28 @@ def main():
         language = st.selectbox(
             "Audio Language",
             options=["auto", "en", "hu", "de", "fr", "es"],
-            format_func=lambda x: "Auto-Detect" if x == "auto" else x.upper(),
-            help="Forcing the language can improve accuracy for non-English content."
+            format_func=lambda x: "Auto-Detect" if x == "auto" else x.upper()
         )
         lang_code = None if language == "auto" else language
 
         st.divider()
-        st.header("Diagnostics")
-        if os.environ.get("OPENAI_API_KEY"):
-            st.success("✅ OpenAI API Key detected")
-        else:
-            st.error("❌ OPENAI_API_KEY missing from .env")
-            st.info("Please create a .env file in the root directory.")
 
-
-        st.info(
-            "**Pipeline Steps:**\n"
-            "1. Extract Audio (FLAC)\n"
-            "2. Split (10m chunks)\n"
-            "3. Parallel Transcribe\n"
-            "4. Merge & Checkpoint"
+        st.header("📚 Knowledge Base")
+        kb_name = st.text_input(
+            "Target Collection Name", 
+            value="Default_Collection",
+            help="Videos with the same Collection Name will be grouped together for searching."
         )
 
-    uploaded_file = st.file_uploader(
-        "Upload a Video Lecture", 
-        type=["mp4", "mov", "avi", "mkv"]
-    )
+        st.divider()
+        st.header("Diagnostics")
+        if os.environ.get("OPENAI_API_KEY"):
+            st.success("✅ OpenAI Key detected")
+        else:
+            st.error("❌ OpenAI Key missing")
+
+
+    uploaded_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi", "mkv"])
 
     if uploaded_file:
         video_path = VIDEO_DIR / uploaded_file.name
@@ -66,71 +64,95 @@ def main():
 
         st.video(str(video_path))
 
-        if st.button("Step 1: Analyze Video (Transcribe)", type="primary"):
+        if st.button("Step 1: Transcribe", type="primary"):
             if not os.environ.get("OPENAI_API_KEY"):
-                st.error("Cannot proceed without API Key.")
+                st.error("Missing API Key")
                 st.stop()
-
             try:
-                transcript_data = transcribe_audio_pipeline(
-                    str(video_path),
-                    language=lang_code
-                )
-
-                st.success("✅ Ingestion Complete!")
-                st.session_state["transcript_data"] = transcript_data
-
+                transcript = transcribe_audio_pipeline(str(video_path), language=lang_code)
+                st.session_state["transcript_data"] = transcript
+                st.success("✅ Transcription Complete")
             except Exception as e:
-                st.error(f"An error occurred during processing: {e}")
+                st.error(f"Error: {e}")
 
     if "transcript_data" in st.session_state:
         data = st.session_state["transcript_data"]
 
-        st.divider()
-        st.header("Step 2: Semantic Analysis")
-
-        # We check if chapters exist to avoid re-running on simple UI clicks
+        # If we haven't segmented yet, show button
         if "chapters" not in st.session_state:
-            st.info("The transcript is ready. Click below to use AI to find logical chapters.")
-            if st.button("🔮 Analyze Topics & Generate Chapters"):
+            st.info("Transcript ready. Analyze topics?")
+            if st.button("Step 2: Generate Chapters"):
                 try:
-                    chapters_structure = semantic_segmentation_pipeline(str(video_path), data)
-                    st.session_state["chapters"] = chapters_structure
+                    v_path_str = str(VIDEO_DIR / uploaded_file.name) if uploaded_file else "unknown_video"
+                    chapters = semantic_segmentation_pipeline(v_path_str, data)
+                    st.session_state["chapters"] = chapters
                     st.rerun()
                 except Exception as e:
                     st.error(f"Analysis failed: {e}")
 
         if "chapters" in st.session_state:
-            video_struct = st.session_state["chapters"]
+            chapters = st.session_state["chapters"]
 
+            st.divider()
             st.subheader("📚 Video Chapters")
 
-            for chap in video_struct.chapters:
+            for chap in chapters.chapters:
                 duration = chap.end_time - chap.start_time
                 minutes = int(duration // 60)
                 seconds = int(duration % 60)
 
-                # Expandable card for each chapter
                 with st.expander(f"**{chap.title}** ({minutes}m {seconds}s)"):
                     st.markdown(f"_{chap.summary}_")
                     st.markdown(f"**Keywords:** {', '.join(chap.topic_keywords)}")
                     st.caption(f"Starts at: {int(chap.start_time // 60)}:{int(chap.start_time % 60):02d}")
 
-        # Debug Tabs
-        st.divider()
-        st.subheader("📊 Raw Data")
+            st.divider()
+            st.subheader(f"Step 3: Add to Collection '{kb_name}'")
 
-        tab1, tab2 = st.tabs(["📝 Full Transcript", "🔍 Word Timestamps"])
+            if st.button("💾 Save to Knowledge Base"):
+                try:
+                    v_path_str = str(VIDEO_DIR / uploaded_file.name) if uploaded_file else "unknown_video"
+                    build_vector_store(v_path_str, chapters, data, kb_name)
+                    st.success(f"Successfully added to collection: {kb_name}")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"RAG Build failed: {e}")
 
-        with tab1:
-            full_text = "\n\n".join([seg["text"] for seg in data])
-            st.text_area("Complete Text", full_text, height=400)
+    # --- Step 4: Chat Interface ---
+    st.divider()
+    st.header("💬 Chat with your Videos")
 
-        with tab2:
-            st.info("Verifying word-level timestamps used for segmentation.")
-            for i, segment in enumerate(data):
-                with st.expander(f"Chunk {i+1} ({len(segment['words'])} words)"):
-                    st.write(f"**Text:** {segment['text'][:150]}...")
-                    st.json(segment['words'][:5])
+    available_collections = list_collections()
+
+    if not available_collections:
+        st.info("No Knowledge Bases found. Process a video and save it to start chatting.")
+    else:
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            selected_collection = st.selectbox("Select Collection", available_collections, index=0)
+
+        # Chat Input
+        if query := st.chat_input(f"Ask about '{selected_collection}'..."):
+            # Display user message
+            with st.chat_message("user"):
+                st.markdown(query)
+
+            # Generate Answer
+            with st.chat_message("assistant"):
+                with st.spinner("Searching knowledge base..."):
+                    try:
+                        result = query_knowledge_base(query, selected_collection)
+
+                        st.markdown(result["answer"])
+
+                        if result["sources"]:
+                            st.markdown("---")
+                            st.caption("Sources used:")
+                            for src in result["sources"]:
+                                st.caption(f"• {src}")
+
+                    except Exception as e:
+                        st.error(f"Error generating answer: {e}")
+
 if __name__ == "__main__":
     main()

@@ -18,7 +18,7 @@ For example:
 
 __Outdated LLM Info__: This one might be specific to the model I've used, but it had a hard time providing me with up to date information throughout my work. It kept suggesting implementations, type hints and dependency versions that were already outdated.  
   
-__Low quality suggestions__: The quality of the implementation suggestions were a mixed bag. For example initially it used prints instead of actual logging. Then after I've requested it to use the logging module, it implemented every single log call with an f-string instead of using lazy logging.
+__Low quality suggestions__: The quality of the implementation suggestions were a mixed bag. For example initially it used prints instead of actual logging. Then after I've requested it to use the logging module, it implemented every single log call with an f-string instead of using lazy logging. Kept adding random unused imports.
 
 __Overly verbose & cheerful__:  
 * _You are absolutely right..._
