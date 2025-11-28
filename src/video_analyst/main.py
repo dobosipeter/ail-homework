@@ -4,10 +4,9 @@ from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
 
-from video_analyst.ingestion import transcribe_audio_pipeline
-
 load_dotenv()
 
+from video_analyst.ingestion import transcribe_audio_pipeline
 
 PAGE_TITLE = "AI Video Analyst"
 PAGE_ICON = "🎥"
@@ -27,21 +26,32 @@ def main():
     """)
 
     with st.sidebar:
-        st.header("⚙️ Settings & Diagnostics")
+        st.header("⚙️ Settings")
 
-        # Security Check
+        language = st.selectbox(
+            "Audio Language",
+            options=["auto", "en", "hu", "de", "fr", "es"],
+            format_func=lambda x: "Auto-Detect" if x == "auto" else x.upper(),
+            help="Forcing the language can improve accuracy for non-English content."
+        )
+        lang_code = None if language == "auto" else language
+
+        st.divider()
+        st.header("Diagnostics")
         if os.environ.get("OPENAI_API_KEY"):
             st.success("✅ OpenAI API Key detected")
         else:
             st.error("❌ OPENAI_API_KEY missing from .env")
             st.info("Please create a .env file in the root directory.")
 
-        st.divider()
-        st.markdown("### How it works")
-        st.markdown("1. **Extracts** audio (FLAC)")
-        st.markdown("2. **Splits** into 10m chunks")
-        st.markdown("3. **Transcribes** via Whisper API")
-        st.markdown("4. **Merges** timestamps")
+
+        st.info(
+            "**Pipeline Steps:**\n"
+            "1. Extract Audio (FLAC)\n"
+            "2. Split (10m chunks)\n"
+            "3. Parallel Transcribe\n"
+            "4. Merge & Checkpoint"
+        )
 
     uploaded_file = st.file_uploader(
         "Upload a Video Lecture", 
@@ -61,11 +71,12 @@ def main():
                 st.stop()
 
             try:
-                transcript_data = transcribe_audio_pipeline(str(video_path))
+                transcript_data = transcribe_audio_pipeline(
+                    str(video_path),
+                    language=lang_code
+                )
 
                 st.success("✅ Ingestion Complete!")
-
-                # Store results in session state so they survive UI interactions
                 st.session_state["transcript_data"] = transcript_data
 
             except Exception as e:
@@ -85,7 +96,7 @@ def main():
             st.text_area("Complete Text", full_text, height=400)
 
         with tab2:
-            st.info("This view proves that we have granular word-level data for Phase 2.")
+            st.info("Verifying word-level timestamps for Phase 2 (Segmentation).")
 
             # Show the structured data for the first few chunks
             for i, segment in enumerate(data):
