@@ -23,10 +23,9 @@ As part of my course, I often review recorded lesson of various classes. However
   
 Additionally, the efficency of information retrieval, learning could potentially be increased by utilizing a Large Language Model at the end of this pipeline to help with answering questions about the topic.  
   
-The outline of my solution is described as follows:  
-  
-1. Take a video file as input, transcribe it utilizing a model, resulting in a timestamped transcript. (Video -> Text)  
-2. Semantic Analysis: Pass the transcript to an LLM to simultaneously segment it into logical chapters and generate a summary + keywords for each section. (Text → Structured Chapters) 
-3. Embed the summaries, keywords, store in a local VectorDB. (_e.g.:FAISS_) (Summaries -> Embeddings)  
-4. Get a query from the user, embed it, retrieve relevant chapters from the DB. (User Query -> Embeddings -> Relevant Context)  
-5. Answer the user's query using the provided context with an LLM. (Question -> Relevant Context -> Answer)  
+The outline of my solution is described as follows:
+
+1.  **Ingestion**: Take a video file as input, extract audio (FLAC), split it into chunks to respect API limits, and transcribe it using OpenAI Whisper to generate a timestamped transcript. (Video -> Raw Text)
+2.  **Semantic Segmentation**: Pass the transcript to a specialized LLM (GPT-4.1-mini) to simultaneously segment it into logical chapters and generate a summary + keywords for each section. (Raw Text -> Structured Chapters)
+3.  **Knowledge Base Construction**: Embed the chapter summaries and keywords using OpenAI Embeddings and store them in a local FAISS vector database organized by "Collection". (Structured Data -> Vector Index)
+4.  **Retrieval Augmented Generation (RAG)**: When the user asks a question, retrieve the relevant chapters, fetch the *original raw text* associated with them, and pass it to an LLM to generate an accurate, cited answer. (Query -> Context -> Answer)

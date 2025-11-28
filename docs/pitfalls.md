@@ -20,7 +20,7 @@ __Outdated LLM Info__: This one might be specific to the model I've used, but it
   
 __Low quality suggestions__: The quality of the implementation suggestions were a mixed bag. For example initially it used prints instead of actual logging. Then after I've requested it to use the logging module, it implemented every single log call with an f-string instead of using lazy logging. Kept adding random unused imports.
 
-__Overly verbose & cheerful__:  
+__Overly verbose and cheerful__:  
 * _You are absolutely right..._
 * _This is a sophisticated request that moves the project from "Student Homework" to "Production Engineering."_ -- (After I've requested it to use logging instead of prints...)
 * _This isn't just <something simple>... This is <something more impressive>!_

@@ -7,7 +7,6 @@ requires-python = ">=3.11"
 dependencies = [
     "openai",
     "pydub",
-    "google-cloud-speech",
     "langchain",
     "langchain-openai",
     "langchain-community",

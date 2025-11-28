@@ -205,3 +205,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Ignore all data contents
+data/*
+
+# Keep the folder structure so git tracks the dirs
+!data/videos/.gitkeep
+!data/audio/.gitkeep
+!data/transcripts/.gitkeep
+!data/segmentations/.gitkeep
+!data/faiss_index/.gitkeep
