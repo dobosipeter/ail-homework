@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from video_analyst.ingestion import transcribe_audio_pipeline
+from video_analyst.segmentation import semantic_segmentation_pipeline
 
 PAGE_TITLE = "AI Video Analyst"
 PAGE_ICON = "🎥"
@@ -65,7 +66,7 @@ def main():
 
         st.video(str(video_path))
 
-        if st.button("Analyze Video", type="primary"):
+        if st.button("Step 1: Analyze Video (Transcribe)", type="primary"):
             if not os.environ.get("OPENAI_API_KEY"):
                 st.error("Cannot proceed without API Key.")
                 st.stop()
@@ -86,23 +87,50 @@ def main():
         data = st.session_state["transcript_data"]
 
         st.divider()
-        st.subheader("📊 Analysis Results")
+        st.header("Step 2: Semantic Analysis")
 
-        tab1, tab2 = st.tabs(["📝 Full Transcript", "🔍 Debug: Word Timestamps"])
+        # We check if chapters exist to avoid re-running on simple UI clicks
+        if "chapters" not in st.session_state:
+            st.info("The transcript is ready. Click below to use AI to find logical chapters.")
+            if st.button("🔮 Analyze Topics & Generate Chapters"):
+                try:
+                    chapters_structure = semantic_segmentation_pipeline(str(video_path), data)
+                    st.session_state["chapters"] = chapters_structure
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Analysis failed: {e}")
+
+        if "chapters" in st.session_state:
+            video_struct = st.session_state["chapters"]
+
+            st.subheader("📚 Video Chapters")
+
+            for chap in video_struct.chapters:
+                duration = chap.end_time - chap.start_time
+                minutes = int(duration // 60)
+                seconds = int(duration % 60)
+
+                # Expandable card for each chapter
+                with st.expander(f"**{chap.title}** ({minutes}m {seconds}s)"):
+                    st.markdown(f"_{chap.summary}_")
+                    st.markdown(f"**Keywords:** {', '.join(chap.topic_keywords)}")
+                    st.caption(f"Starts at: {int(chap.start_time // 60)}:{int(chap.start_time % 60):02d}")
+
+        # Debug Tabs
+        st.divider()
+        st.subheader("📊 Raw Data")
+
+        tab1, tab2 = st.tabs(["📝 Full Transcript", "🔍 Word Timestamps"])
 
         with tab1:
-            # Reconstruct the full text from segments
             full_text = "\n\n".join([seg["text"] for seg in data])
             st.text_area("Complete Text", full_text, height=400)
 
         with tab2:
-            st.info("Verifying word-level timestamps for Phase 2 (Segmentation).")
-
-            # Show the structured data for the first few chunks
+            st.info("Verifying word-level timestamps used for segmentation.")
             for i, segment in enumerate(data):
-                with st.expander(f"Chunk {i+1}: {len(segment['words'])} words"):
-                    st.write(f"**Chunk Text:** {segment['text'][:100]}...")
-                    st.json(segment['words'][:10])
-
+                with st.expander(f"Chunk {i+1} ({len(segment['words'])} words)"):
+                    st.write(f"**Text:** {segment['text'][:150]}...")
+                    st.json(segment['words'][:5])
 if __name__ == "__main__":
     main()

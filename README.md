@@ -1,7 +1,7 @@
 # ail-homework
 The homework for my Artificial Intelligence Laboratory course.  
   
-This repository contains my homework submission for my [Artificial Intelligence Laboratory](https://moodle.uni-pannon.hu/course/view.php?id=24556) course.
+This [repository](https://github.com/dobosipeter/ail-homework/tree/main) contains my homework submission for my [Artificial Intelligence Laboratory](https://moodle.uni-pannon.hu/course/view.php?id=24556) course.
   
 ## Description  
   

@@ -26,7 +26,7 @@ __Overly verbose & cheerful__:
 * _This isn't just <something simple>... This is <something more impressive>!_
 * _\# This display the results_ -> _result.display()_  
   
-Mitigated the above by manually reviewing each function, removing useless comments.  
+Mitigated the above by manually reviewing each function before implementing, removing useless comments, fixing other mistakes.  
   
 __API Call Failures__: My calls to the transcription API failed seemingly randomly, had to implement retries, backoff. Maybe caused by some network issues?
   

@@ -15,6 +15,7 @@ dependencies = [
     "tiktoken",
     "streamlit==1.50.0",
     "python-dotenv",
+    "pydantic"
 ]
 
 [project.optional-dependencies]
