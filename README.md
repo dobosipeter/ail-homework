@@ -29,3 +29,72 @@ The outline of my solution is described as follows:
 2.  **Semantic Segmentation**: Pass the transcript to a specialized LLM (GPT-4.1-mini) to simultaneously segment it into logical chapters and generate a summary + keywords for each section. (Raw Text -> Structured Chapters)
 3.  **Knowledge Base Construction**: Embed the chapter summaries and keywords using OpenAI Embeddings and store them in a local FAISS vector database organized by "Collection". (Structured Data -> Vector Index)
 4.  **Retrieval Augmented Generation (RAG)**: When the user asks a question, retrieve the relevant chapters, fetch the *original raw text* associated with them, and pass it to an LLM to generate an accurate, cited answer. (Query -> Context -> Answer)
+  
+## Architecture  
+  
+```mermaid
+flowchart TD
+    %% Global Styles
+    classDef storage fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef process fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef ai fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef user fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
+
+    %% Nodes
+    User([👤 User]):::user
+    VideoFile[🎥 Video File]:::storage
+    
+    subgraph Phase1 [Phase 1: Ingestion]
+        direction TB
+        Extract[FFmpeg Extraction]:::process
+        Split[Audio Splitting]:::process
+        Whisper(OpenAI Whisper API):::ai
+        Transcript[📝 Raw Transcript + Timestamps]:::storage
+    end
+
+    subgraph Phase2 [Phase 2: Semantic Analysis]
+        direction TB
+        Inject[Inject Time Anchors]:::process
+        SegmentLLM(GPT-4.1-mini \n Segmentation):::ai
+        Chapters[📚 Structured Chapters \n Title, Summary, Keywords]:::storage
+    end
+
+    subgraph Phase3 [Phase 3: Knowledge Base]
+        direction TB
+        Embed(OpenAI Embeddings):::ai
+        FAISS[(FAISS Vector DB \n Organized by Collection)]:::storage
+    end
+
+    subgraph Phase4 [Phase 4: RAG & Chat]
+        direction TB
+        Query[❓ User Query]:::user
+        Search[Similarity Search]:::process
+        Context[📄 Raw Text Reconstruction]:::process
+        AnswerLLM(GPT-4.1-mini \n Answer Generation):::ai
+        FinalAnswer[💬 Final Answer \n with Citations]:::user
+    end
+
+    %% Flow Connections
+    User -->|Uploads| VideoFile
+    VideoFile --> Extract
+    Extract -->|FLAC Audio| Split
+    Split -->|10m Chunks| Whisper
+    Whisper --> Transcript
+    
+    Transcript --> Inject
+    Inject --> SegmentLLM
+    SegmentLLM --> Chapters
+    
+    Chapters --> Embed
+    Embed --> FAISS
+    
+    User -->|Asks Question| Query
+    Query --> Search
+    Search <-->|Retrieves Top K| FAISS
+    Search -->|Metadata| Context
+    Transcript -.->|Source Text| Context
+    
+    Context --> AnswerLLM
+    Query --> AnswerLLM
+    AnswerLLM --> FinalAnswer
+```
